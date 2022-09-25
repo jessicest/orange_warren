@@ -1,10 +1,12 @@
 
-use druid::kurbo::{BezPath, Point};
+use druid::kurbo::{Circle};
 use druid::{AppLauncher, WindowDesc, Widget, PlatformError};
-use druid::{Color, Env, PaintCtx,Rect, RenderContext};
+use druid::{Color, RenderContext};
 use druid::widget::{Label, Painter, Flex, Padding, Align};
 
-fn build_ui() -> impl Widget<Color> {
+type ColorPair = (Color, Color);
+
+fn build_ui() -> impl Widget<(Color, Color)> {
     Padding::new(
         10.0,
         Flex::row()
@@ -21,7 +23,8 @@ fn build_ui() -> impl Widget<Color> {
 }
 
 pub fn do_a_window() -> Result<(), PlatformError> {
-    AppLauncher::with_window(WindowDesc::new(build_ui())).launch(Color::rgba8(11, 99, 120, 127))?;
+    let colors = (Color::rgba8(11, 99, 120, 127), Color::rgba8(88, 22, 11, 127));
+    AppLauncher::with_window(WindowDesc::new(build_ui())).launch(colors)?;
     Ok(())
 }
 
@@ -48,17 +51,21 @@ pub fn draw_piet() {
 }
 */
 
-fn make_painter() -> Painter<Color> {
+fn make_painter() -> Painter<ColorPair> {
     const CORNER_RADIUS: f64 = 4.0;
     const STROKE_WIDTH: f64 = 2.0;
 
-    Painter::new(|ctx, data: &Color, env| {
+    Painter::new(|ctx, data: &ColorPair, env| {
         // Shrink the bounds a little, to ensure that our stroke remains within
         // the paint bounds.
         let bounds = ctx.size().to_rect().inset(-STROKE_WIDTH / 2.0);
         let rounded = bounds.to_rounded_rect(CORNER_RADIUS);
-        ctx.fill(rounded, data);
+        ctx.fill(rounded, &data.0);
         ctx.stroke(rounded, &env.get(druid::theme::PRIMARY_DARK), STROKE_WIDTH);
+        let radius = f64::min(bounds.width().abs(), bounds.height().abs()) / 2.0;
+        let circle = Circle::new(bounds.center(), radius);
+        ctx.fill(circle, &data.1);
+        ctx.stroke(circle, &env.get(druid::theme::PRIMARY_DARK), STROKE_WIDTH);
     })
 }
 
