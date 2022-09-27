@@ -1,8 +1,7 @@
-
-use druid::kurbo::{Circle};
-use druid::{AppLauncher, WindowDesc, Widget, PlatformError};
+use druid::kurbo::Circle;
+use druid::widget::{Align, Flex, Label, Padding, Painter};
+use druid::{AppLauncher, PlatformError, Widget, WindowDesc};
 use druid::{Color, RenderContext};
-use druid::widget::{Label, Painter, Flex, Padding, Align};
 
 type ColorPair = (Color, Color);
 
@@ -14,16 +13,22 @@ fn build_ui() -> impl Widget<(Color, Color)> {
                 Flex::column()
                     .with_flex_child(Label::new("top left"), 1.0)
                     .with_flex_child(Align::centered(Label::new("bottom left")), 1.0),
-                1.0)
+                1.0,
+            )
             .with_flex_child(
                 Flex::column()
                     .with_flex_child(Label::new("top right"), 1.0)
                     .with_flex_child(Align::centered(make_painter()), 1.0),
-                1.0))
+                1.0,
+            ),
+    )
 }
 
 pub fn do_a_window() -> Result<(), PlatformError> {
-    let colors = (Color::rgba8(11, 99, 120, 127), Color::rgba8(88, 22, 11, 127));
+    let colors = (
+        Color::rgba8(11, 99, 120, 127),
+        Color::rgba8(88, 22, 11, 127),
+    );
     AppLauncher::with_window(WindowDesc::new(build_ui())).launch(colors)?;
     Ok(())
 }
@@ -68,4 +73,3 @@ fn make_painter() -> Painter<ColorPair> {
         ctx.stroke(circle, &env.get(druid::theme::PRIMARY_DARK), STROKE_WIDTH);
     })
 }
-
