@@ -1,10 +1,16 @@
 
+use crate::squares::ZoneId;
+
 pub type Id = String;
+pub type UnitId = Id;
+pub type ItemType = Id;
+pub type AttributeId = Id;
 
 pub enum Fragment {
-    IntFragment(Id, Id, usize),
-    FloatFragment(Id, Id, f64),
-    VoidFragment(Id, Id),
+    UnitZone(UnitId, ZoneId),
+    UnitHolds(UnitId, ItemType, usize),
+    UnitEquips(UnitId, ItemType, usize),
+    UnitHasAttribute(UnitId, AttributeId, f64),
 }
 
 // a unit:

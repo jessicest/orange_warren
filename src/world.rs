@@ -1,37 +1,23 @@
 
-use crate::fragment::Id;
+use crate::fragment::{Fragment, Id};
+use crate::squares::{Zone, ZoneId};
 use std::collections::HashMap;
 use std::vec::Vec;
 
-struct World {
-    truth: HashMap<Id, Vec<Fragment>>,
+pub struct World {
+    truths: HashMap<Id, Vec<Fragment>>,
+    pub zones: HashMap<ZoneId, Zone>,
 }
 
-enum Relation {
-    IsAtLocation,
-    Holds(usize),
-    Equips(usize),
-    HasAttribute(f64),
+impl World {
+    pub fn get_truths(&self, id: &str) -> &Vec<Fragment> {
+        self.truths.get(&String::from(id)).expect(&format!("no truths exist for {}", id))
+    }
+
+    pub fn new() -> Self {
+        World {
+            truths: HashMap::new(),
+            zones: HashMap::new(),
+        }
+    }
 }
-
-
-pub struct Fragment {
-    actor: Id,
-    relation: Relation,
-    target: Id,
-}
-
-//  ItemPosition(ZoneId, ItemType, f64),
-//  UnitPosition(ZoneId, UnitId),
-//  UnitPossession(UnitId, ItemType, f64),
-
-// a unit:
-//   what items do they possess?
-//   what zone are they in?
-// a zone:
-//   what items are on it?
-//   what people are in it?
-// an item type:
-//   where is it?
-//   which people have it?
-

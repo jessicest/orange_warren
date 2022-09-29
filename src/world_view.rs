@@ -1,20 +1,28 @@
 
+use std::rc::Rc;
+
+use crate::squares::Pos;
+use crate::fragment::{Fragment::*, UnitId};
+use crate::world::World;
 use druid::kurbo::Circle;
 use druid::widget::{Align, Flex, Label, Padding, Painter};
-use druid::{AppLauncher, PlatformError, Widget, WindowDesc};
+use druid::{AppLauncher, PlatformError, Widget, WindowDesc, PaintCtx};
 use druid::{Color, RenderContext};
 
 struct WorldView {
+    world: World,
 }
 
 impl WorldView where {
-    fn paint(world: &World) {
+    fn new(world: World) -> Self {
+        WorldView {
+            world,
+        }
     }
+
 }
 
-type ColorPair = (Color, Color);
-
-fn build_ui() -> impl Widget<(Color, Color)> {
+fn build_ui() -> impl Widget<Rc<WorldView>> {
     Padding::new(
         10.0,
         Flex::row()
@@ -27,33 +35,50 @@ fn build_ui() -> impl Widget<(Color, Color)> {
             .with_flex_child(
                 Flex::column()
                     .with_flex_child(Label::new("top right"), 1.0)
-                    .with_flex_child(Align::centered(make_painter()), 1.0),
+                    .with_flex_child(Align::centered(make_viewport_widget(Pos::new(0, 0))), 1.0),
                 1.0,
             ),
     )
 }
 
-pub fn do_a_window() -> Result<(), PlatformError> {
+pub fn do_a_window(world: World) -> Result<(), PlatformError> {
     let colors = (
         Color::rgba8(11, 99, 120, 127),
         Color::rgba8(88, 22, 11, 127),
     );
-    AppLauncher::with_window(WindowDesc::new(build_ui())).launch(colors)?;
+    let world_view = WorldView::new(world);
+    let world_view = Rc::new(world_view);
+    AppLauncher::with_window(WindowDesc::new(build_ui())).launch(world_view)?;
     Ok(())
 }
 
-#[derive(Data)]
-struct Viewport {
-    #[data(ignore)]
-    visible_fragments: HashMap<Vec<Fragment>>,
+fn make_viewport_widget(offset: Pos<i64>) -> Painter<Rc<WorldView>> {
+    Painter::new(move |ctx, world_view: &Rc<WorldView>, env| {
+        let world = &world_view.world;
+
+        for fragment in world.get_truths("u0") {
+            if let &UnitZone(_, zid) = &fragment {
+                let pos = world.zones.get(zid).unwrap().center();
+                let pos = pos + offset;
+                for fragment in world.get_truths(&pos.to_zone_id()) {
+                    match fragment {
+                        UnitZone(uid, _) => paint_unit(ctx, world, uid),
+                        _ => (),
+                    }
+                }
+            }
+        }
+    })
 }
 
-fn make_viewport_widget() -> Painter<Viewport> {
-    Painter::new(|ctx, viewport: &(), env| {
-        let bounds = ctx.size().to_rect().inset(-1.0);
-        let size = ctx.size();
-
+fn paint_unit<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, world: &World, uid: &UnitId) {
         /*
+        //let radius = 4;
+        //let breadth = radius * 2 + 1;
+
+        let bounds = ctx.size().to_rect().inset(-1.0);
+        //let cell_size = Size::new(ctx.size().width / breadth, ctx.size().height / breadth);
+
         let bounds = ctx.size().to_rect().inset(-STROKE_WIDTH / 2.0);
         let rounded = bounds.to_rounded_rect(CORNER_RADIUS);
         ctx.fill(rounded, &data.0);
@@ -63,5 +88,4 @@ fn make_viewport_widget() -> Painter<Viewport> {
         ctx.fill(circle, &data.1);
         ctx.stroke(circle, &env.get(druid::theme::PRIMARY_DARK), STROKE_WIDTH);
         */
-    })
 }
