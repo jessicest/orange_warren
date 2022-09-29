@@ -20,4 +20,13 @@ impl World {
             zones: HashMap::new(),
         }
     }
+
+    pub fn add_fragment(&mut self, fragment: Fragment) {
+        match fragment {
+            Fragment::UnitZone(uid, zid) => todo!(),
+            Fragment::UnitHolds(_, _, _) => todo!(),
+            Fragment::UnitEquips(_, _, _) => todo!(),
+            Fragment::UnitHasAttribute(_, _, _) => todo!(),
+        }
+    }
 }
