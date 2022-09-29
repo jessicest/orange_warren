@@ -1,8 +1,7 @@
 use druid::PlatformError;
-use squares::Pos;
+use fragment::{Zone, Fragment, IdType};
 
 use crate::world::World;
-use crate::fragment::Fragment::*;
 
 mod fragment;
 mod squares;
@@ -17,7 +16,8 @@ mod item;
     //UnitHasAttribute(UnitId, AttributeId, f64),
 fn make_sample_world() -> World {
     let mut world = World::new();
-    world.add_fragment(UnitZone(String::from("u0"), Pos::new(0, 0).to_zone_id()));
+    //world.fragments.add(Fragment::new(IdType::from(String::from("u0")), IdType::from(Zone(0, 0, 1)), fragment::Shard::UnitIsInZone()));
+    world.fragments.add(Fragment::new("u0", "z0,0#1", fragment::Shard::UnitIsInZone()));
     world
 }
 

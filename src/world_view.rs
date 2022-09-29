@@ -1,8 +1,8 @@
 
 use std::rc::Rc;
 
+use crate::fragment::{Fragment, UnitId, Shard::*, self};
 use crate::squares::Pos;
-use crate::fragment::{Fragment::*, UnitId};
 use crate::world::World;
 use druid::kurbo::Circle;
 use druid::widget::{Align, Flex, Label, Padding, Painter};
@@ -46,24 +46,22 @@ pub fn do_a_window(world: World) -> Result<(), PlatformError> {
         Color::rgba8(11, 99, 120, 127),
         Color::rgba8(88, 22, 11, 127),
     );
-    let world_view = WorldView::new(world);
-    let world_view = Rc::new(world_view);
+    let world_view = Rc::new(WorldView::new(world));
     AppLauncher::with_window(WindowDesc::new(build_ui())).launch(world_view)?;
     Ok(())
 }
 
-fn make_viewport_widget(offset: Pos<i64>) -> Painter<Rc<WorldView>> {
+fn make_viewport_widget(offset: (i64, i64)) -> Painter<Rc<WorldView>> {
     Painter::new(move |ctx, world_view: &Rc<WorldView>, env| {
         let world = &world_view.world;
 
-        for fragment in world.get_truths("u0") {
-            if let &UnitZone(_, zid) = &fragment {
-                let pos = world.zones.get(zid).unwrap().center();
-                let pos = pos + offset;
-                for fragment in world.get_truths(&pos.to_zone_id()) {
-                    match fragment {
-                        UnitZone(uid, _) => paint_unit(ctx, world, uid),
-                        _ => (),
+        for u0_fragment in world.fragments.get_all("u0") {
+            if let &UnitIsInZone() = &u0_fragment.shard {
+                let u0_zid = u0_fragment.b;
+                let zid = u0_zid + offset;
+                for fragment in world.fragments.get_all(zid) {
+                    if let UnitIsInZone() = fragment.shard {
+                        paint_unit(ctx, world, &fragment.a);
                     }
                 }
             }
