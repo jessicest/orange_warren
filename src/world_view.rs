@@ -35,7 +35,7 @@ fn build_ui() -> impl Widget<Rc<WorldView>> {
             .with_flex_child(
                 Flex::column()
                     .with_flex_child(Label::new("top right"), 1.0)
-                    .with_flex_child(Align::centered(make_viewport_widget((0, 0))), 1.0),
+                    .with_flex_child(Align::centered(make_viewport_widget()), 1.0),
                 1.0,
             ),
     )
@@ -51,7 +51,19 @@ pub fn do_a_window(world: World) -> Result<(), PlatformError> {
     Ok(())
 }
 
-fn make_viewport_widget(offset: (i64, i64)) -> Painter<Rc<WorldView>> {
+fn make_viewport_widget() -> Flex<Rc<WorldView>> {
+    let mut grid = Flex::column();
+    for y in (-4)..=(4) {
+        let mut row = Flex::row();
+        for x in (-4)..=(4) {
+            row.add_flex_child(make_cell_widget((x, y)), 1.0);
+        }
+        grid.add_flex_child(row, 1.0);
+    }
+    grid
+}
+
+fn make_cell_widget(offset: (i64, i64)) -> Painter<Rc<WorldView>> {
     Painter::new(move |ctx, world_view: &Rc<WorldView>, env| {
         let world = &world_view.world;
 

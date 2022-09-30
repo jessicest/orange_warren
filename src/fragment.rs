@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, hash_map::Values}, string::String};
+use std::{collections::{HashMap, hash_map::Values}, string::String, option::Iter, hash::Hash};
 
 use derive_more::From;
 
@@ -25,10 +25,11 @@ pub type ZoneId = Id;
 
 pub struct Fragments {
     fragments: HashMap<Id, HashMap<Id, Fragment>>,
+    empty_subfragment: HashMap<Id, Fragment>,
 }
 
 impl Fragments {
-    pub fn check(&self, fragment: &Fragment) -> bool {
+    pub fn check(&self, fragment: &Fragment) -> (bool, bool) {
         let a = self.fragments.get(&fragment.a)
         .and_then(|subfragments| subfragments.get(&fragment.b))
         .map(|f| f == fragment)
@@ -39,13 +40,11 @@ impl Fragments {
         .map(|f| f == fragment)
         .unwrap_or(false);
 
-        a && b
+        (a, b)
     }
 
-    pub fn add(&mut self, fragment: Fragment) -> bool {
-        if self.check(&fragment) {
-            return false;
-        }
+    pub fn add(&mut self, fragment: Fragment) {
+        assert_eq!(self.check(&fragment), (false, false), "can't re-add {:?}", fragment);
 
         // TODO: if we make all the ID keys in the hashmap references into the fragment itself, they no longer need String and
         // thus we can cut all these clones away
@@ -55,28 +54,25 @@ impl Fragments {
         self.fragments.entry(fragment.b.clone())
             .or_default()
             .insert(fragment.a.clone(), fragment.clone());
-
-        true
     }
 
-    pub fn remove(&mut self, fragment: &Fragment) -> bool {
-        if !self.check(fragment) {
-            return false;
-        }
+    pub fn remove(&mut self, fragment: &Fragment) {
+        assert_eq!(self.check(&fragment), (true, true), "can't re-remove {:?}", fragment);
         self.fragments.get_mut(&fragment.a).unwrap().remove(&fragment.b);
         self.fragments.get_mut(&fragment.b).unwrap().remove(&fragment.a);
-
-        true
     }
 
     pub fn new() -> Self {
-        Fragments { fragments: HashMap::new() }
+        Fragments {
+            fragments: HashMap::new(),
+            empty_subfragment: HashMap::new(),
+        }
     }
 
     pub fn get_all<'a>(&'a self, id: &str) -> Values<'a, Id, Fragment> {
         self.fragments.get(id)
-            .expect(&format!("fragments should contain {}", id))
-            .values()
+            .map(|subfragments| subfragments.values())
+            .unwrap_or(self.empty_subfragment.values())
     }
 }
 

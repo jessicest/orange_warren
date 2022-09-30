@@ -18,6 +18,8 @@ fn make_sample_world() -> World {
     let mut world = World::new();
     //world.fragments.add(Fragment::new(IdType::from(String::from("u0")), IdType::from(Zone(0, 0, 1)), fragment::Shard::UnitIsInZone()));
     world.fragments.add(Fragment::new("u0", "Zone(0, 0, 1)", fragment::Shard::UnitIsInZone(Zone(0, 0, 1))));
+    world.fragments.add(Fragment::new("u1", "Zone(3, 2, 1)", fragment::Shard::UnitIsInZone(Zone(3, 2, 1))));
+    world.fragments.add(Fragment::new("u2", "Zone(-4, 2, 1)", fragment::Shard::UnitIsInZone(Zone(-4, 2, 1))));
     world
 }
 
