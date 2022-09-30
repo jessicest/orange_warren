@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, hash_map::Values}, rc::Rc, string::String};
+use std::{collections::{HashMap, hash_map::Values}, string::String};
 
 use derive_more::From;
 
@@ -6,7 +6,7 @@ use derive_more::From;
 pub struct Zone(pub i64, pub i64, pub u64);
 
 impl Zone {
-    fn adjust(&self, x: i64, y: i64) -> Self {
+    pub fn adjust(&self, x: i64, y: i64) -> Self {
         Zone(self.0 + x, self.1 + y, self.2)
     }
 }
@@ -17,7 +17,7 @@ pub enum IdType {
     Zone(Zone),
 }
 
-pub type Id = Rc<String>;
+pub type Id = String;
 pub type UnitId = Id;
 pub type ItemId = Id;
 pub type AttributeId = Id;
@@ -47,12 +47,14 @@ impl Fragments {
             return false;
         }
 
-        self.fragments.entry(fragment.a)
+        // TODO: if we make all the ID keys in the hashmap references into the fragment itself, they no longer need String and
+        // thus we can cut all these clones away
+        self.fragments.entry(fragment.a.clone())
             .or_default()
-            .insert(fragment.b, fragment.clone());
-        self.fragments.entry(fragment.b)
+            .insert(fragment.b.clone(), fragment.clone());
+        self.fragments.entry(fragment.b.clone())
             .or_default()
-            .insert(fragment.a, fragment.clone());
+            .insert(fragment.a.clone(), fragment.clone());
 
         true
     }
@@ -72,7 +74,7 @@ impl Fragments {
     }
 
     pub fn get_all<'a>(&'a self, id: &str) -> Values<'a, Id, Fragment> {
-        self.fragments.get(&Rc::new(String::from(id)))
+        self.fragments.get(id)
             .expect(&format!("fragments should contain {}", id))
             .values()
     }
@@ -95,8 +97,8 @@ pub struct Fragment {
 impl Fragment {
     pub fn new(a: &str, b: &str, shard: Shard) -> Self {
         Fragment {
-            a: Rc::new(String::from(a)),
-            b: Rc::new(String::from(b)),
+            a: String::from(a),
+            b: String::from(b),
             shard,
         }
     }
@@ -104,7 +106,7 @@ impl Fragment {
 
 #[derive(Debug,PartialEq,Clone)]
 pub enum Shard {
-    UnitIsInZone(),
+    UnitIsInZone(Zone),
     UnitOwns(usize),
     UnitHasAttribute(f64),
     ItemIsInZone(Zone, usize),
