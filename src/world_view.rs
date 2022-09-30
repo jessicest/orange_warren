@@ -3,9 +3,8 @@ use std::rc::Rc;
 
 use crate::fragment::{UnitId, Shard::*};
 use crate::world::World;
-use druid::widget::{Align, Flex, Label, Padding, Painter};
-use druid::{AppLauncher, PlatformError, Widget, WindowDesc, PaintCtx};
-use druid::{Color, RenderContext};
+use druid::widget::{Align, Flex, Label, Padding, Painter, Container};
+use druid::{AppLauncher, Color, RenderContext, PlatformError, Widget, WindowDesc, PaintCtx, WidgetExt};
 
 struct WorldView {
     world: World,
@@ -45,7 +44,7 @@ pub fn do_a_window(world: World) -> Result<(), PlatformError> {
     Ok(())
 }
 
-fn make_viewport_widget() -> Flex<Rc<WorldView>> {
+fn make_viewport_widget() -> Container<Rc<WorldView>> {
     let mut grid = Flex::column();
     for y in (-4)..=(4) {
         let mut row = Flex::row();
@@ -54,7 +53,7 @@ fn make_viewport_widget() -> Flex<Rc<WorldView>> {
         }
         grid.add_flex_child(row, 1.0);
     }
-    grid
+    grid.border(Color::PURPLE, 2.0)
 }
 
 fn make_cell_widget(offset: (i64, i64)) -> Painter<Rc<WorldView>> {
