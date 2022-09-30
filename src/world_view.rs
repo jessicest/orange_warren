@@ -1,10 +1,8 @@
 
 use std::rc::Rc;
 
-use crate::fragment::{Fragment, UnitId, Shard::*, self};
-use crate::squares::Pos;
+use crate::fragment::{UnitId, Shard::*};
 use crate::world::World;
-use druid::kurbo::Circle;
 use druid::widget::{Align, Flex, Label, Padding, Painter};
 use druid::{AppLauncher, PlatformError, Widget, WindowDesc, PaintCtx};
 use druid::{Color, RenderContext};
@@ -42,10 +40,6 @@ fn build_ui() -> impl Widget<Rc<WorldView>> {
 }
 
 pub fn do_a_window(world: World) -> Result<(), PlatformError> {
-    let colors = (
-        Color::rgba8(11, 99, 120, 127),
-        Color::rgba8(88, 22, 11, 127),
-    );
     let world_view = Rc::new(WorldView::new(world));
     AppLauncher::with_window(WindowDesc::new(build_ui())).launch(world_view)?;
     Ok(())

@@ -46,8 +46,6 @@ impl Fragments {
     pub fn add(&mut self, fragment: Fragment) {
         assert_eq!(self.check(&fragment), (false, false), "can't re-add {:?}", fragment);
 
-        // TODO: if we make all the ID keys in the hashmap references into the fragment itself, they no longer need String and
-        // thus we can cut all these clones away
         self.fragments.entry(fragment.a.clone())
             .or_default()
             .insert(fragment.b.clone(), fragment.clone());
