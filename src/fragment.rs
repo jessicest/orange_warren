@@ -24,19 +24,21 @@ pub type AttributeId = Id;
 pub type ZoneId = Id;
 
 pub struct Fragments {
-    fragments: HashMap<Id, HashMap<Id, Fragment>>,
+    fragments: HashMap<Id, HashMap<&'static str, HashMap<Id, Fragment>>>,
     empty_subfragment: HashMap<Id, Fragment>,
 }
 
 impl Fragments {
     pub fn check(&self, fragment: &Fragment) -> (bool, bool) {
         let a = self.fragments.get(&fragment.a)
-        .and_then(|subfragments| subfragments.get(&fragment.b))
+        .and_then(|p| p.get(fragment.shard_name))
+        .and_then(|q| q.get(&fragment.b))
         .map(|f| f == fragment)
         .unwrap_or(false);
 
         let b = self.fragments.get(&fragment.b)
-        .and_then(|subfragments| subfragments.get(&fragment.a))
+        .and_then(|p| p.get(fragment.shard_name))
+        .and_then(|q| q.get(&fragment.a))
         .map(|f| f == fragment)
         .unwrap_or(false);
 
@@ -48,16 +50,20 @@ impl Fragments {
 
         self.fragments.entry(fragment.a.clone())
             .or_default()
+            .entry(fragment.shard_name)
+            .or_default()
             .insert(fragment.b.clone(), fragment.clone());
         self.fragments.entry(fragment.b.clone())
+            .or_default()
+            .entry(fragment.shard_name)
             .or_default()
             .insert(fragment.a.clone(), fragment.clone());
     }
 
     pub fn remove(&mut self, fragment: &Fragment) {
         assert_eq!(self.check(&fragment), (true, true), "can't re-remove {:?}", fragment);
-        self.fragments.get_mut(&fragment.a).unwrap().remove(&fragment.b);
-        self.fragments.get_mut(&fragment.b).unwrap().remove(&fragment.a);
+        self.fragments.get_mut(&fragment.a).unwrap().get_mut(fragment.shard_name).unwrap().remove(&fragment.b);
+        self.fragments.get_mut(&fragment.b).unwrap().get_mut(fragment.shard_name).unwrap().remove(&fragment.a);
     }
 
     pub fn new() -> Self {
@@ -67,32 +73,28 @@ impl Fragments {
         }
     }
 
-    pub fn get_all<'a>(&'a self, id: &str) -> Values<'a, Id, Fragment> {
+    pub fn get_all<'a>(&'a self, id: &str, shard_name: &str) -> Values<'a, Id, Fragment> {
         self.fragments.get(id)
-            .map(|subfragments| subfragments.values())
+            .and_then(|p| p.get(shard_name))
+            .map(|q| q.values())
             .unwrap_or(self.empty_subfragment.values())
     }
-}
-
-type Timestamp = String;
-
-pub struct FragmentExpiry {
-    fragment: Fragment,
-    expiry: Timestamp,
 }
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct Fragment {
     pub a: Id,
     pub b: Id,
+    pub shard_name: &'static str,
     pub shard: Shard,
 }
 
 impl Fragment {
-    pub fn new(a: &str, b: &str, shard: Shard) -> Self {
+    pub fn new(a: &str, b: &str, shard_name: &'static str, shard: Shard) -> Self {
         Fragment {
             a: String::from(a),
             b: String::from(b),
+            shard_name,
             shard,
         }
     }

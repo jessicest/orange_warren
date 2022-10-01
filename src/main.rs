@@ -1,5 +1,5 @@
 use druid::PlatformError;
-use fragment::{Zone, Fragment, IdType};
+use fragment::{Zone, Fragment, Shard::*};
 
 use crate::world::World;
 
@@ -9,9 +9,9 @@ mod world_view;
 
 fn make_sample_world() -> World {
     let mut world = World::new();
-    world.fragments.add(Fragment::new("u0", "Zone(0, 0, 1)", fragment::Shard::UnitIsInZone(Zone(0, 0, 1))));
-    world.fragments.add(Fragment::new("u1", "Zone(3, 2, 1)", fragment::Shard::UnitIsInZone(Zone(3, 2, 1))));
-    world.fragments.add(Fragment::new("u2", "Zone(-4, 2, 1)", fragment::Shard::UnitIsInZone(Zone(-4, 2, 1))));
+    world.fragments.add(Fragment::new("u0", "Zone(0, 0, 1)", "UnitIsInZone", UnitIsInZone(Zone(0, 0, 1))));
+    world.fragments.add(Fragment::new("u1", "Zone(3, 2, 1)", "UnitIsInZone", UnitIsInZone(Zone(3, 2, 1))));
+    world.fragments.add(Fragment::new("u2", "Zone(-4, 2, 1)", "UnitIsInZone", UnitIsInZone(Zone(-4, 2, 1))));
     world
 }
 

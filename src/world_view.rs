@@ -22,14 +22,18 @@ impl WorldView where {
 
     fn step(&mut self, unit_id: &str, x: i64, y: i64) {
         let fragment = self.world.fragments
-            .get_all(unit_id)
+            .get_all(unit_id, "UnitIsInZone")
             .find(|f| matches!(f.shard, UnitIsInZone(_)))
             .expect("avatar should exist")
             .clone();
         self.world.fragments.remove(&fragment);
         if let UnitIsInZone(Zone(zx, zy, 1)) = fragment.shard {
             let zone = Zone(zx + x, zy + y, 1);
-            self.world.fragments.add(Fragment::new(unit_id, &format!("{:?}", zone), UnitIsInZone(zone)));
+            self.world.fragments.add(Fragment::new(
+                unit_id,
+                &format!("{:?}", zone),
+                &fragment.shard_name,
+                UnitIsInZone(zone)));
         }
     }
 }
@@ -53,7 +57,7 @@ impl <Child: Widget<WorldData>> Controller<WorldData, Child> for KeyController {
             Event::KeyUp(key_event) => {
                 let mut world_view = data.borrow_mut();
                 match key_event.code {
-                    Numpad1 => world_view.step("u0", -1, -1),
+                    Numpad1 => world_view.step("u0", -1, 1),
                     Numpad2 => world_view.step("u0", 0, 1),
                     Numpad3 => world_view.step("u0", 1, 1),
                     Numpad4 => world_view.step("u0", -1, 0),
@@ -113,10 +117,10 @@ fn make_cell_widget(offset: (i64, i64)) -> impl Widget<WorldData> {
     Painter::new(move |ctx, world_view: &WorldData, env| {
         let world = &world_view.borrow().world;
 
-        for u0_fragment in world.fragments.get_all("u0") {
+        for u0_fragment in world.fragments.get_all("u0", "UnitIsInZone") {
             if let &UnitIsInZone(u0_zone) = &u0_fragment.shard {
                 let zid = u0_zone.adjust(offset.0, offset.1);
-                for fragment in world.fragments.get_all(&format!("{:?}", zid)) {
+                for fragment in world.fragments.get_all(&format!("{:?}", zid), "UnitIsInZone") {
                     if let UnitIsInZone(_) = fragment.shard {
                         paint_unit(ctx, world, &fragment.a);
                     }
