@@ -63,6 +63,7 @@ impl <Child: Widget<WorldData>> Controller<WorldData, Child> for KeyController {
                     Numpad9 => world_view.step("u0", 1, -1),
                     _ => {},
                 }
+                ctx.request_paint();
             },
             _ => child.event(ctx, event, data, env),
         }
