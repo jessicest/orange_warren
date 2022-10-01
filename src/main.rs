@@ -4,7 +4,6 @@ use fragment::{Zone, Fragment, IdType};
 use crate::world::World;
 
 mod fragment;
-mod window;
 mod world;
 mod world_view;
 
