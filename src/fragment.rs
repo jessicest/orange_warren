@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, hash_map::Values}, string::String, hash::Hash};
+use std::{collections::{HashMap, hash_map::Values}, string::String, hash::Hash, rc::Rc};
 
 use derive_more::From;
 
@@ -24,8 +24,8 @@ pub type AttributeId = Id;
 pub type ZoneId = Id;
 
 pub struct Fragments {
-    fragments: HashMap<Id, HashMap<&'static str, HashMap<Id, Fragment>>>,
-    empty_subfragment: HashMap<Id, Fragment>,
+    fragments: HashMap<Id, HashMap<&'static str, HashMap<Id, Rc<Fragment>>>>,
+    empty_subfragment: HashMap<Id, Rc<Fragment>>,
 }
 
 impl Fragments {
@@ -33,13 +33,13 @@ impl Fragments {
         let a = self.fragments.get(&fragment.a)
         .and_then(|p| p.get(fragment.shard_name))
         .and_then(|q| q.get(&fragment.b))
-        .map(|f| f == fragment)
+        .map(|f| f.as_ref() == fragment)
         .unwrap_or(false);
 
         let b = self.fragments.get(&fragment.b)
         .and_then(|p| p.get(fragment.shard_name))
         .and_then(|q| q.get(&fragment.a))
-        .map(|f| f == fragment)
+        .map(|f| f.as_ref() == fragment)
         .unwrap_or(false);
 
         (a, b)
@@ -48,16 +48,17 @@ impl Fragments {
     pub fn add(&mut self, fragment: Fragment) {
         assert_eq!(self.check(&fragment), (false, false), "can't re-add {:?}", fragment);
 
+        let fragment = Rc::new(fragment);
         self.fragments.entry(fragment.a.clone())
             .or_default()
             .entry(fragment.shard_name)
             .or_default()
-            .insert(fragment.b.clone(), fragment.clone());
+            .insert(fragment.b.clone(), Rc::clone(&fragment));
         self.fragments.entry(fragment.b.clone())
             .or_default()
             .entry(fragment.shard_name)
             .or_default()
-            .insert(fragment.a.clone(), fragment.clone());
+            .insert(fragment.a.clone(), fragment);
     }
 
     pub fn remove(&mut self, fragment: &Fragment) {
@@ -73,7 +74,7 @@ impl Fragments {
         }
     }
 
-    pub fn get_all<'a>(&'a self, id: &str, shard_name: &str) -> Values<'a, Id, Fragment> {
+    pub fn get_all<'a>(&'a self, id: &str, shard_name: &str) -> Values<'a, Id, Rc<Fragment>> {
         self.fragments.get(id)
             .and_then(|p| p.get(shard_name))
             .map(|q| q.values())
