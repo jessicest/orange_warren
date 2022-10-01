@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use crate::fragment::{UnitId, Shard::*};
 use crate::world::World;
-use druid::widget::{Align, Flex, Label, Padding, Painter, Container};
-use druid::{AppLauncher, Color, RenderContext, PlatformError, Widget, WindowDesc, PaintCtx, WidgetExt};
+use druid::widget::{Align, Flex, Label, Padding, Painter, Container, Controller};
+use druid::{AppLauncher, Color, RenderContext, PlatformError, Widget, WindowDesc, PaintCtx, WidgetExt, Env, EventCtx, Event, KeyEvent};
 
 struct WorldView {
     world: World,
@@ -17,6 +17,31 @@ impl WorldView where {
         }
     }
 
+}
+
+struct KeyController {
+
+}
+
+impl KeyController {
+    fn new() -> Self {
+        KeyController {
+        }
+    }
+}
+
+impl <Child: Widget<Rc<WorldView>>> Controller<Rc<WorldView>, Child> for KeyController {
+    fn event(&mut self, child: &mut Child, ctx: &mut EventCtx, event: &Event, data: &mut Rc<WorldView>, env: &Env) {
+        match &event {
+            Event::KeyDown(key_event) => {},
+            Event::KeyUp(key_event) => {
+                println!("{:?}", key_event.key);
+                //match key_event.key {
+                //}
+            },
+            _ => child.event(ctx, event, data, env),
+        }
+    }
 }
 
 fn build_ui() -> impl Widget<Rc<WorldView>> {
@@ -53,7 +78,9 @@ fn make_viewport_widget() -> Container<Rc<WorldView>> {
         }
         grid.add_flex_child(row, 1.0);
     }
-    grid.border(Color::PURPLE, 2.0)
+    grid
+        .controller(KeyController::new())
+        .border(Color::PURPLE, 2.0)
 }
 
 fn make_cell_widget(offset: (i64, i64)) -> Painter<Rc<WorldView>> {
