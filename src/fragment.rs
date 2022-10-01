@@ -74,11 +74,22 @@ impl Fragments {
         }
     }
 
-    pub fn get_all<'a>(&'a self, id: &str, shard_name: &str) -> Values<'a, Id, Rc<Fragment>> {
+    pub fn get<'a>(&'a self, id: &str, shard_name: &str) -> Values<'a, Id, Rc<Fragment>> {
         self.fragments.get(id)
             .and_then(|p| p.get(shard_name))
             .map(|q| q.values())
             .unwrap_or(self.empty_subfragment.values())
+    }
+
+    pub fn get_all<'a>(&'a self, id: &str) -> Vec<&Rc<Fragment>> {
+        self.fragments.get(id)
+            .map(|p| {
+                p.values()
+                .map(|q| q.values())
+                .flatten()
+                .collect::<Vec<_>>()
+            })
+            .unwrap_or(vec![])
     }
 }
 

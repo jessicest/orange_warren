@@ -27,7 +27,7 @@ impl WorldView where {
     fn step(&mut self, unit_id: &str, x: i64, y: i64) {
         let mut world = self.world.borrow_mut();
         let fragment = world.fragments
-            .get_all(unit_id, "UnitIsInZone")
+            .get(unit_id, "UnitIsInZone")
             .find(|f| matches!(f.shard, UnitIsInZone(_)))
             .expect("avatar should exist")
             .clone();
@@ -118,10 +118,10 @@ impl <Child: Widget<WorldView>> Controller<WorldView, Child> for ClickSelector {
                     let mut new_unit_id = None;
                     let world = world_view.world.borrow_mut();
 
-                    for player_fragment in world.fragments.get_all("player", "UnitIsInZone") {
+                    for player_fragment in world.fragments.get("player", "UnitIsInZone") {
                         if let &UnitIsInZone(player_zone) = &player_fragment.shard {
                             let zid = player_zone.adjust(self.offset.0, self.offset.1);
-                            for fragment in world.fragments.get_all(&format!("{:?}", zid), "UnitIsInZone") {
+                            for fragment in world.fragments.get(&format!("{:?}", zid), "UnitIsInZone") {
                                 if let UnitIsInZone(_) = fragment.shard {
                                     new_unit_id = Some(fragment.a.clone());
                                 }
@@ -149,13 +149,19 @@ fn build_ui() -> impl Widget<WorldView> {
 }
 
 fn make_info_panel() -> impl Widget<WorldView> {
-    Label::new(|selected_unit_id: &Option<String>, _env: &_| {
-        if let Some(uid) = &selected_unit_id {
-            uid.clone()
+    Label::new(|world_view: &WorldView, _env: &_| {
+        if let Some(uid) = &world_view.selected_unit_id {
+            let mut result = String::new();
+
+            for fragment in world_view.world.borrow_mut().fragments.get_all(uid) {
+                result.push_str(&format!("{:#?}", fragment));
+            }
+
+            result
         } else {
             String::from("no unit selected")
         }
-    }).lens(lens!(WorldView, selected_unit_id))
+    })
 }
 
 pub fn do_a_window(world: World) -> Result<(), PlatformError> {
@@ -183,10 +189,10 @@ fn make_cell_widget(offset: (i64, i64)) -> impl Widget<WorldView> {
         let world = world_view.world.borrow_mut();  // todo: idk why .borrow() doesn't work here
         let selected_unit_id = &world_view.selected_unit_id;
 
-        for player_fragment in world.fragments.get_all("player", "UnitIsInZone") {
+        for player_fragment in world.fragments.get("player", "UnitIsInZone") {
             if let &UnitIsInZone(player_zone) = &player_fragment.shard {
                 let zid = player_zone.adjust(offset.0, offset.1);
-                for fragment in world.fragments.get_all(&format!("{:?}", zid), "UnitIsInZone") {
+                for fragment in world.fragments.get(&format!("{:?}", zid), "UnitIsInZone") {
                     if let UnitIsInZone(_) = fragment.shard {
                         paint_unit(ctx, &world, &fragment.a, selected_unit_id);
                     }
