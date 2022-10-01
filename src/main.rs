@@ -12,6 +12,8 @@ fn make_sample_world() -> World {
     world.fragments.add(Fragment::new("player", "Zone(0, 0, 1)", "UnitIsInZone", UnitIsInZone(Zone(0, 0, 1))));
     world.fragments.add(Fragment::new("u1", "Zone(3, 2, 1)", "UnitIsInZone", UnitIsInZone(Zone(3, 2, 1))));
     world.fragments.add(Fragment::new("u2", "Zone(-4, 2, 1)", "UnitIsInZone", UnitIsInZone(Zone(-4, 2, 1))));
+    world.fragments.add(Fragment::new("player", "tomahawk", "UnitOwns", UnitOwns(14)));
+    world.fragments.add(Fragment::new("player", "hp", "UnitHasAttribute", UnitHasAttribute(38.5)));
     world
 }
 
