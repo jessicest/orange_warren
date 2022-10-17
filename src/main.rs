@@ -3,17 +3,20 @@ use fragment::{Zone, Fragment, Shard::*};
 
 use crate::world::World;
 
+mod decider;
+mod entry;
 mod fragment;
 mod world;
+mod world_actions;
 mod world_view;
 
 fn make_sample_world() -> World {
     let mut world = World::new();
-    world.fragments.add(Fragment::new("player", "Zone(0, 0, 1)", "UnitIsInZone", UnitIsInZone(Zone(0, 0, 1))));
-    world.fragments.add(Fragment::new("u1", "Zone(3, 2, 1)", "UnitIsInZone", UnitIsInZone(Zone(3, 2, 1))));
-    world.fragments.add(Fragment::new("u2", "Zone(-4, 2, 1)", "UnitIsInZone", UnitIsInZone(Zone(-4, 2, 1))));
+    world.add_unit("player", Zone(0, 0, 1));
     world.fragments.add(Fragment::new("player", "tomahawk", "UnitOwns", UnitOwns(14)));
     world.fragments.add(Fragment::new("player", "hp", "UnitHasAttribute", UnitHasAttribute(38.5)));
+    world.add_unit("u1", Zone(3, 2, 1));
+    world.add_unit("u2", Zone(-4, 2, 1));
     world
 }
 
