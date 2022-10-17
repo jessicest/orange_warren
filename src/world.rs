@@ -1,16 +1,18 @@
 
-use std::collections::{HashMap, BinaryHeap};
+use std::collections::hash_map::Values;
+use std::collections::{BinaryHeap};
+use std::rc::Rc;
 
-use crate::fragment::{Fragments, UnitId, Zone, Fragment, Shard::*};
-use crate::decider::Decider;
+use crate::fragment::{Fragments, Zone, Fragment, Shard::*, IdType};
 use crate::entry::Entry;
+use crate::task::Task;
 
 type Timestamp = u128;
 
 struct Unit {
-    id: UnitId,
-    decider: Decider,
-    next_tick: Timestamp,
+    pub id: IdType,
+    pub task: Option<Box<dyn Task>>,
+    pub next_tick: Timestamp,
 }
 
 pub struct World {
@@ -27,19 +29,27 @@ impl World {
     }
 
     pub fn next_tick(&self) -> Timestamp {
-        self.units.peek().map(|entry| entry.key).unwrap_or(0)
+        self.units.peek().map(|entry| entry.0).unwrap_or(0)
     }
 
     pub fn tick(&mut self) {
-        todo!();
+        if let Some(Entry(_, unit)) = self.units.pop() {
+            todo!("interact with the task");
+            self.units.push(Entry(unit.next_tick, unit));
+        }
     }
 
-    pub fn add_unit(&mut self, id: &str, zone: Zone) {
+    pub fn add_unit(&mut self, id: IdType, zone: Zone) {
         let unit = Unit {
-            id: String::from(id),
-            decider: Decider::new(),
+            id: id.clone(),
+            task: None,
             next_tick: self.next_tick(),
         };
-        self.fragments.add(Fragment::new(id, &format!("{:#?}", zone), "UnitIsInZone", UnitIsInZone(zone)));
+        self.fragments.add(Rc::new(Fragment::new(id, IdType::from(zone), "UnitIsInZone", UnitIsInZone(zone))));
+        self.units.push(Entry(unit.next_tick, unit));
+    }
+
+    pub fn get_fragments<'a>(&'a self, first_id: &IdType, shard_name: &str) -> Values<'a, IdType, Rc<Fragment>> {
+        self.fragments.get(first_id, shard_name)
     }
 }

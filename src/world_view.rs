@@ -3,17 +3,23 @@ use std::borrow::Borrow;
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
 
-use crate::fragment::{UnitId, Shard::*, Zone, Fragment};
+use crate::fragment::{UnitId, Shard::*, Zone, Fragment, IdType};
 use crate::world::World;
 use druid::widget::{Flex, Label, Padding, Painter, Controller, Scroll};
 use druid::{AppLauncher, Color, RenderContext, PlatformError, Widget, WindowDesc, PaintCtx, WidgetExt, Env, EventCtx, Event, MouseButton, Data, lens};
 
 type TheWorld = Rc<RefCell<World>>;
 
+impl Data for IdType {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
 #[derive(Clone, Data)]
 struct WorldView {
     world: TheWorld,
-    selected_unit_id: Option<UnitId>,
+    selected_unit_id: Option<IdType>,
 }
 
 impl WorldView where {
@@ -24,21 +30,22 @@ impl WorldView where {
         }
     }
 
-    fn step(&mut self, unit_id: &str, x: i64, y: i64) {
+    fn move_unit(&mut self, unit_id: &str, x: i64, y: i64) {
         let mut world = self.world.borrow_mut();
         let fragment = world.fragments
-            .get(unit_id, "UnitIsInZone")
+            .get(&IdType::from(unit_id), "UnitIsInZone")
             .find(|f| matches!(f.shard, UnitIsInZone(_)))
             .expect("avatar should exist")
             .clone();
         world.fragments.remove(&fragment);
         if let UnitIsInZone(Zone(zx, zy, 1)) = fragment.shard {
             let zone = Zone(zx + x, zy + y, 1);
-            world.fragments.add(Fragment::new(
-                unit_id,
-                &format!("{:?}", zone),
-                &fragment.shard_name,
-                UnitIsInZone(zone)));
+            let fragment = Fragment::new(
+                fragment.a.clone(),
+                IdType::from(zone.clone()),
+                "UnitIsInZone",
+                UnitIsInZone(zone));
+            world.fragments.add(Rc::new(fragment));
         }
     }
 }
@@ -61,14 +68,14 @@ impl <Child: Widget<WorldView>> Controller<WorldView, Child> for KeyController {
             Event::WindowConnected => ctx.request_focus(),
             Event::KeyUp(key_event) => {
                 match key_event.code {
-                    Numpad1 => world_view.step("player", -1, 1),
-                    Numpad2 => world_view.step("player", 0, 1),
-                    Numpad3 => world_view.step("player", 1, 1),
-                    Numpad4 => world_view.step("player", -1, 0),
-                    Numpad6 => world_view.step("player", 1, 0),
-                    Numpad7 => world_view.step("player", -1, -1),
-                    Numpad8 => world_view.step("player", 0, -1),
-                    Numpad9 => world_view.step("player", 1, -1),
+                    Numpad1 => world_view.move_unit("player", -1, 1),
+                    Numpad2 => world_view.move_unit("player", 0, 1),
+                    Numpad3 => world_view.move_unit("player", 1, 1),
+                    Numpad4 => world_view.move_unit("player", -1, 0),
+                    Numpad6 => world_view.move_unit("player", 1, 0),
+                    Numpad7 => world_view.move_unit("player", -1, -1),
+                    Numpad8 => world_view.move_unit("player", 0, -1),
+                    Numpad9 => world_view.move_unit("player", 1, -1),
                     _ => {},
                 }
                 ctx.request_paint();
@@ -118,10 +125,10 @@ impl <Child: Widget<WorldView>> Controller<WorldView, Child> for ClickSelector {
                     let mut new_unit_id = None;
                     let world = world_view.world.borrow_mut();
 
-                    for player_fragment in world.fragments.get("player", "UnitIsInZone") {
+                    for player_fragment in world.fragments.get(&IdType::from("player"), "UnitIsInZone") {
                         if let &UnitIsInZone(player_zone) = &player_fragment.shard {
                             let zid = player_zone.adjust(self.offset.0, self.offset.1);
-                            for fragment in world.fragments.get(&format!("{:?}", zid), "UnitIsInZone") {
+                            for fragment in world.fragments.get(&IdType::from(zid), "UnitIsInZone") {
                                 if let UnitIsInZone(_) = fragment.shard {
                                     new_unit_id = Some(fragment.a.clone());
                                 }
@@ -189,10 +196,10 @@ fn make_cell_widget(offset: (i64, i64)) -> impl Widget<WorldView> {
         let world = world_view.world.borrow_mut();  // todo: idk why .borrow() doesn't work here
         let selected_unit_id = &world_view.selected_unit_id;
 
-        for player_fragment in world.fragments.get("player", "UnitIsInZone") {
+        for player_fragment in world.fragments.get(&IdType::from("player"), "UnitIsInZone") {
             if let &UnitIsInZone(player_zone) = &player_fragment.shard {
                 let zid = player_zone.adjust(offset.0, offset.1);
-                for fragment in world.fragments.get(&format!("{:?}", zid), "UnitIsInZone") {
+                for fragment in world.fragments.get(&IdType::from(zid), "UnitIsInZone") {
                     if let UnitIsInZone(_) = fragment.shard {
                         paint_unit(ctx, &world, &fragment.a, selected_unit_id);
                     }
@@ -202,7 +209,7 @@ fn make_cell_widget(offset: (i64, i64)) -> impl Widget<WorldView> {
     }).controller(ClickSelector::new(offset))
 }
 
-fn paint_unit<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, world: &World, uid: &str, selected_unit_id: &Option<UnitId>) {
+fn paint_unit<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, world: &World, uid: &IdType, selected_unit_id: &Option<IdType>) {
     let bounds = ctx.size().to_rect().inset(-4.0);
     let rounded = bounds.to_rounded_rect(3.0);
     ctx.fill(rounded, &Color::LIME);

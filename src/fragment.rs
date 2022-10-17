@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, hash_map::Values}, string::String, hash::Hash, rc::Rc};
+use std::{collections::{HashMap, hash_map::Values}, string::String, hash::Hash, rc::Rc, borrow::Borrow};
 
 use derive_more::From;
 
@@ -9,12 +9,25 @@ impl Zone {
     pub fn adjust(&self, x: i64, y: i64) -> Self {
         Zone(self.0 + x, self.1 + y, self.2)
     }
+
+    pub fn contains(&self, inner: &Zone) -> bool {
+        self.0 - self.2 as i64 <= inner.0 - inner.2 as i64
+        && self.0 + self.2 as i64 >= inner.0 + inner.2 as i64
+        && self.1 - self.2 as i64 <= inner.1 - inner.2 as i64
+        && self.1 + self.2 as i64 >= inner.1 + inner.2 as i64
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, From)]
 pub enum IdType {
     String(String),
     Zone(Zone),
+}
+
+impl From<&str> for IdType {
+    fn from(s: &str) -> Self {
+        Self::from(String::from(s))
+    }
 }
 
 pub type Id = String;
@@ -24,8 +37,8 @@ pub type AttributeId = Id;
 pub type ZoneId = Id;
 
 pub struct Fragments {
-    fragments: HashMap<Id, HashMap<&'static str, HashMap<Id, Rc<Fragment>>>>,
-    empty_subfragment: HashMap<Id, Rc<Fragment>>,
+    fragments: HashMap<IdType, HashMap<&'static str, HashMap<IdType, Rc<Fragment>>>>,
+    empty_subfragment: HashMap<IdType, Rc<Fragment>>,
 }
 
 impl Fragments {
@@ -45,10 +58,9 @@ impl Fragments {
         (a, b)
     }
 
-    pub fn add(&mut self, fragment: Fragment) {
+    pub fn add(&mut self, fragment: Rc<Fragment>) {
         assert_eq!(self.check(&fragment), (false, false), "can't re-add {:?}", fragment);
 
-        let fragment = Rc::new(fragment);
         self.fragments.entry(fragment.a.clone())
             .or_default()
             .entry(fragment.shard_name)
@@ -74,14 +86,14 @@ impl Fragments {
         }
     }
 
-    pub fn get<'a>(&'a self, id: &str, shard_name: &str) -> Values<'a, Id, Rc<Fragment>> {
+    pub fn get<'a>(&'a self, id: &IdType, shard_name: &str) -> Values<'a, IdType, Rc<Fragment>> {
         self.fragments.get(id)
             .and_then(|p| p.get(shard_name))
             .map(|q| q.values())
             .unwrap_or(self.empty_subfragment.values())
     }
 
-    pub fn get_all<'a>(&'a self, id: &str) -> Vec<&Rc<Fragment>> {
+    pub fn get_all<'a>(&'a self, id: &IdType) -> Vec<&Rc<Fragment>> {
         self.fragments.get(id)
             .map(|p| {
                 p.values()
@@ -95,17 +107,21 @@ impl Fragments {
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct Fragment {
-    pub a: Id,
-    pub b: Id,
+    pub a: IdType,
+    pub b: IdType,
     pub shard_name: &'static str,
     pub shard: Shard,
 }
 
 impl Fragment {
-    pub fn new(a: &str, b: &str, shard_name: &'static str, shard: Shard) -> Self {
+    pub fn new_str(a: &str, b: &str, shard_name: &'static str, shard: Shard) -> Self {
+        Self::new(IdType::from(a), IdType::from(b), shard_name, shard)
+    }
+
+    pub fn new(a: IdType, b: IdType, shard_name: &'static str, shard: Shard) -> Self {
         Fragment {
-            a: String::from(a),
-            b: String::from(b),
+            a,
+            b,
             shard_name,
             shard,
         }
