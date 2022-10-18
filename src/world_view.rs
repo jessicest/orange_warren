@@ -1,10 +1,10 @@
 
-use std::borrow::Borrow;
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
 
 use crate::fragment::{UnitId, Shard::*, Zone, Fragment, IdType};
 use crate::world::World;
+use crate::world_actions;
 use druid::widget::{Flex, Label, Padding, Painter, Controller, Scroll};
 use druid::{AppLauncher, Color, RenderContext, PlatformError, Widget, WindowDesc, PaintCtx, WidgetExt, Env, EventCtx, Event, MouseButton, Data, lens};
 
@@ -30,22 +30,12 @@ impl WorldView where {
         }
     }
 
-    fn move_unit(&mut self, unit_id: &str, x: i64, y: i64) {
+    fn move_avatar(&mut self, x: i64, y: i64) {
         let mut world = self.world.borrow_mut();
-        let fragment = world.fragments
-            .get(&IdType::from(unit_id), "UnitIsInZone")
-            .find(|f| matches!(f.shard, UnitIsInZone(_)))
-            .expect("avatar should exist")
-            .clone();
-        world.fragments.remove(&fragment);
-        if let UnitIsInZone(Zone(zx, zy, 1)) = fragment.shard {
-            let zone = Zone(zx + x, zy + y, 1);
-            let fragment = Fragment::new(
-                fragment.a.clone(),
-                IdType::from(zone.clone()),
-                "UnitIsInZone",
-                UnitIsInZone(zone));
-            world.fragments.add(Rc::new(fragment));
+        world.queued_move = (x, y);
+        world.advance();
+        while world.next_unit() != &IdType::from("player") {
+            world.advance();
         }
     }
 }
@@ -68,14 +58,15 @@ impl <Child: Widget<WorldView>> Controller<WorldView, Child> for KeyController {
             Event::WindowConnected => ctx.request_focus(),
             Event::KeyUp(key_event) => {
                 match key_event.code {
-                    Numpad1 => world_view.move_unit("player", -1, 1),
-                    Numpad2 => world_view.move_unit("player", 0, 1),
-                    Numpad3 => world_view.move_unit("player", 1, 1),
-                    Numpad4 => world_view.move_unit("player", -1, 0),
-                    Numpad6 => world_view.move_unit("player", 1, 0),
-                    Numpad7 => world_view.move_unit("player", -1, -1),
-                    Numpad8 => world_view.move_unit("player", 0, -1),
-                    Numpad9 => world_view.move_unit("player", 1, -1),
+                    Numpad1 => world_view.move_avatar(-1, 1),
+                    Numpad2 => world_view.move_avatar(0, 1),
+                    Numpad3 => world_view.move_avatar(1, 1),
+                    Numpad4 => world_view.move_avatar(-1, 0),
+                    Numpad5 => world_view.move_avatar(0, 0),
+                    Numpad6 => world_view.move_avatar(1, 0),
+                    Numpad7 => world_view.move_avatar(-1, -1),
+                    Numpad8 => world_view.move_avatar(0, -1),
+                    Numpad9 => world_view.move_avatar(1, -1),
                     _ => {},
                 }
                 ctx.request_paint();

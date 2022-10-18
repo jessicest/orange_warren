@@ -22,6 +22,7 @@ fn make_sample_world() -> World {
     world.add_unit(IdType::from("player"), Zone(0, 0, 1));
     add_fragment(&mut world, "player", "tomahawk", "UnitOwns", UnitOwns(34));
     add_fragment(&mut world, "player", "hp", "UnitHasAttribute", UnitHasAttribute(38.5));
+
     world.add_unit(IdType::from("u1"), Zone(3, 2, 1));
     world.add_unit(IdType::from("u2"), Zone(-4, 2, 1));
     world

@@ -9,3 +9,4 @@ edition = "2021"
 druid = { git = "https://github.com/linebender/druid.git" }
 num = "0.4"
 derive_more = "0.99"
+rand = "*"
