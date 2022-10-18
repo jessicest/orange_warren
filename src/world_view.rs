@@ -45,6 +45,25 @@ impl WorldView where {
             world.advance();
         }
     }
+
+    fn unit_is_selected(&self, a: &IdType) -> bool {
+        if let Some(selected_uid) = &self.selected_unit_id {
+            &a.to_string() == selected_uid
+        } else {
+            false
+        }
+    }
+
+    fn player_zone(&self) -> Zone {
+        let world = self.world.borrow();
+        for player_fragment in world.fragments.get(&IdType::from("player"), "UnitIsInZone") {
+            if let &UnitIsInZone(player_zone) = &player_fragment.shard {
+                return player_zone;
+            }
+        }
+
+        panic!("zoneless player just isn't what we do here")
+    }
 }
 
 struct KeyController {
@@ -218,29 +237,39 @@ fn make_viewport_widget() -> impl Widget<WorldView> {
 
 fn make_cell_widget(offset: (i64, i64)) -> impl Widget<WorldView> {
     Painter::new(move |ctx, world_view: &WorldView, _env| {
-        let world = world_view.world.borrow_mut();  // todo: idk why .borrow() doesn't work here
-        let selected_unit_id = &world_view.selected_unit_id;
+        let zone = world_view.player_zone().adjust(offset.0, offset.1);
+        let world = world_view.world.borrow();
 
-        for player_fragment in world.fragments.get(&IdType::from("player"), "UnitIsInZone") {
-            if let &UnitIsInZone(player_zone) = &player_fragment.shard {
-                let zid = player_zone.adjust(offset.0, offset.1);
-                for fragment in world.fragments.get(&IdType::from(zid), "UnitIsInZone") {
-                    if let UnitIsInZone(_) = fragment.shard {
-                        paint_unit(ctx, &world, &fragment.a, selected_unit_id);
-                    }
-                }
+        if let Some(_) = world.fragments.get_precise(&IdType::from("tree"), "ObjectTypeOccupiesZone", &IdType::from(zone)) {
+            paint_rect(ctx, &Color::LIME);
+        }
+
+        for fragment in world.fragments.get(&IdType::from(zone), "UnitIsInZone") {
+            paint_rect(ctx, &Color::BLUE);
+            if world_view.unit_is_selected(&fragment.a) {
+                paint_border(ctx, &Color::PURPLE);
             }
         }
     }).controller(ClickSelector::new(offset))
 }
 
-fn paint_unit<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, world: &World, uid: &IdType, selected_unit_id: &Option<UnitId>) {
+fn paint_rect<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, color: &Color) {
     let bounds = ctx.size().to_rect().inset(-4.0);
     let rounded = bounds.to_rounded_rect(3.0);
-    ctx.fill(rounded, &Color::LIME);
+    ctx.fill(rounded, color);
+}
+
+fn paint_border<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, color: &Color) {
+    let bounds = ctx.size().to_rect().inset(-4.0);
+    let rounded = bounds.to_rounded_rect(3.0);
+    ctx.stroke(rounded, color, 2.0);
+}
+
+fn paint_unit<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, world: &World, uid: &IdType, selected_unit_id: &Option<UnitId>) {
+    paint_rect(ctx, &Color::BLUE);
     if let Some(selected_unit_id) = selected_unit_id {
         if &IdType::from(selected_unit_id) == uid {
-            ctx.stroke(rounded, &Color::BLUE, 2.0);
+            paint_border(ctx, &Color::PURPLE);
         }
     }
 }

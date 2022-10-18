@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use druid::PlatformError;
 use fragment::{Zone, Fragment, Shard::{*, self}, IdType};
+use rand::Rng;
 
 use crate::world::World;
 
@@ -13,18 +14,33 @@ mod world;
 mod world_actions;
 mod world_view;
 
-fn add_fragment(world: &mut World, a: &str, b: &str, shard_name: &'static str, shard: Shard) {
-    world.fragments.add(Rc::new(Fragment::new_str(a, b, shard_name, shard)));
+fn afss(world: &mut World, a: &str, b: &str, shard_name: &'static str, shard: Shard) {
+    world.fragments.add(Rc::new(Fragment::new(IdType::from(a), IdType::from(b), shard_name, shard)));
+}
+
+fn afsz(world: &mut World, a: &str, b: Zone, shard_name: &'static str, shard: Shard) {
+    world.fragments.add(Rc::new(Fragment::new(IdType::from(a), IdType::from(b), shard_name, shard)));
 }
 
 fn make_sample_world() -> World {
+    let mut rng = rand::thread_rng();
+
     let mut world = World::new();
     world.add_unit("player", Zone(0, 0, 1));
-    add_fragment(&mut world, "player", "tomahawk", "UnitOwns", UnitOwns(34));
-    add_fragment(&mut world, "player", "hp", "UnitHasAttribute", UnitHasAttribute(38.5));
+    afss(&mut world, "player", "tomahawk", "UnitOwns", UnitOwns(34));
+    afss(&mut world, "player", "hp", "UnitHasAttribute", UnitHasAttribute(38.5));
 
     world.add_unit("u1", Zone(3, 2, 1));
     world.add_unit("u2", Zone(-4, 2, 1));
+
+    for _ in 0..17 {
+        let x = rng.gen_range(10..100);
+        let y = rng.gen_range(-10..10);
+
+        if world.get_fragments(&IdType::from("tree"), "ObjectTypeOccupiesZone").count() == 0 {
+            afsz(&mut world, "tree", Zone(x, y, 1), "ObjectTypeOccupiesZone", ObjectTypeOccupiesZone(Zone(x, y, 1)));
+        }
+    }
     world
 }
 

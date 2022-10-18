@@ -100,6 +100,12 @@ impl Fragments {
         }
     }
 
+    pub fn get_precise<'a>(&'a self, a: &IdType, shard_name: &str, b: &IdType) -> Option<Rc<Fragment>> {
+        self.fragments.get(a)
+            .and_then(|p| p.get(shard_name))
+            .and_then(|p| p.get(b).cloned())
+    }
+
     pub fn get<'a>(&'a self, id: &IdType, shard_name: &str) -> Values<'a, IdType, Rc<Fragment>> {
         self.fragments.get(id)
             .and_then(|p| p.get(shard_name))
@@ -147,15 +153,6 @@ pub enum Shard {
     UnitIsInZone(Zone),
     UnitOwns(usize),
     UnitHasAttribute(f64),
-    ItemIsInZone(Zone, usize),
+    ItemTypeIsInZone(Zone, usize),
+    ObjectTypeOccupiesZone(Zone),
 }
-
-// a unit:
-//   what items do they possess?
-//   what zone are they in?
-// a zone:
-//   what items are on it?
-//   what people are in it?
-// an item type:
-//   where is it?
-//   which people have it?
