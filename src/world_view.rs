@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::fragment::{Shard::*, Zone, Fragment, IdType, UnitId};
 use crate::world::World;
 use druid::widget::{Flex, Label, Padding, Painter, Controller, Scroll};
-use druid::{AppLauncher, Color, RenderContext, PlatformError, Widget, WindowDesc, PaintCtx, WidgetExt, Env, EventCtx, Event, MouseButton, Data, lens};
+use druid::{AppLauncher, Color, RenderContext, PlatformError, Widget, WindowDesc, PaintCtx, WidgetExt, Env, EventCtx, Event, MouseButton, Data, lens, UnitPoint};
 
 type TheWorld = Rc<RefCell<World>>;
 
@@ -150,8 +150,8 @@ fn build_ui() -> impl Widget<WorldView> {
         Flex::row()
             .with_flex_child(make_viewport_widget(), 1.0)
             .with_flex_child(Flex::column()
-                .with_flex_child(Scroll::new(make_fragments_panel()).vertical(), 1.0)
-                .with_flex_child(Scroll::new(make_tasks_panel()).vertical(), 1.0)
+                .with_flex_child(Scroll::new(make_fragments_panel()).vertical().border(Color::PURPLE, 2.0), 1.0)
+                .with_flex_child(Scroll::new(make_tasks_panel()).align_vertical(UnitPoint::BOTTOM).border(Color::PURPLE, 2.0), 0.1)
             , 1.0)
             .controller(RepaintOnClick::new())
             .controller(KeyController::new())
@@ -206,9 +206,9 @@ pub fn do_a_window(world: World) -> Result<(), PlatformError> {
 
 fn make_viewport_widget() -> impl Widget<WorldView> {
     let mut grid = Flex::column();
-    for y in (-4)..=(4) {
+    for y in (-12)..=(12) {
         let mut row = Flex::row();
-        for x in (-4)..=(4) {
+        for x in (-12)..=(12) {
             row.add_flex_child(make_cell_widget((x, y)), 1.0);
         }
         grid.add_flex_child(row, 1.0);
