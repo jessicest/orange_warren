@@ -33,12 +33,13 @@ fn make_sample_world() -> World {
     world.add_unit("u1", Zone(3, 2, 1));
     world.add_unit("u2", Zone(-4, 2, 1));
 
-    for _ in 0..17 {
+    for _ in 0..217 {
         let x = rng.gen_range(10..100);
         let y = rng.gen_range(-10..10);
+        let zone = Zone(x, y, 1);
 
-        if world.get_fragments(&IdType::from("tree"), "ObjectTypeOccupiesZone").count() == 0 {
-            afsz(&mut world, "tree", Zone(x, y, 1), "ObjectTypeOccupiesZone", ObjectTypeOccupiesZone(Zone(x, y, 1)));
+        if world.fragments.get_one("ObjectTypeOccupiesZone", &IdType::from("tree"), &IdType::from(zone)).is_none() {
+            afsz(&mut world, "tree", zone, "ObjectTypeOccupiesZone", ObjectTypeOccupiesZone(zone));
         }
     }
     world

@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, hash_map::Values}, string::String, hash::Hash, rc::Rc, borrow::Borrow};
+use std::{collections::{HashMap, hash_map::Values}, string::String, hash::Hash, rc::Rc, borrow::Borrow, slice::Iter};
 
 use derive_more::From;
 
@@ -51,93 +51,88 @@ pub type AttributeId = Id;
 pub type ZoneId = Id;
 
 pub struct Fragments {
-    fragments: HashMap<IdType, HashMap<&'static str, HashMap<IdType, Rc<Fragment>>>>,
-    empty_subfragment: HashMap<IdType, Rc<Fragment>>,
+    paired: HashMap<(&'static str, IdType, IdType), Rc<Fragment>>,
+    a_to_b: HashMap<(&'static str, IdType), Vec<Rc<Fragment>>>,
+    a_to_all: HashMap<IdType, Vec<Rc<Fragment>>>,
+    empty_vec: Vec<Rc<Fragment>>,
 }
 
 impl Fragments {
-    pub fn check(&self, fragment: &Fragment) -> (bool, bool) {
-        let a = self.fragments.get(&fragment.a)
-        .and_then(|p| p.get(fragment.shard_name))
-        .and_then(|q| q.get(&fragment.b))
-        .map(|f| f.as_ref() == fragment)
-        .unwrap_or(false);
+    pub fn get_one<'a>(&'a self, shard_name: &'static str, a: &IdType, b: &IdType) -> Option<&'a Rc<Fragment>> {
+        self.paired.get(&(shard_name, a.clone(), b.clone()))
+    }
 
-        let b = self.fragments.get(&fragment.b)
-        .and_then(|p| p.get(fragment.shard_name))
-        .and_then(|q| q.get(&fragment.a))
-        .map(|f| f.as_ref() == fragment)
-        .unwrap_or(false);
+    pub fn get<'a>(&'a self, shard_name: &'static str, id: &IdType) -> Iter<'a, Rc<Fragment>> {
+        self.a_to_b.get(&(shard_name, id.clone()))
+            .unwrap_or(&self.empty_vec)
+            .iter()
+    }
 
-        (a, b)
+    pub fn get_all(&self, id: &IdType) -> Iter<Rc<Fragment>> {
+        self.a_to_all.get(id)
+            .unwrap_or(&self.empty_vec)
+            .iter()
     }
 
     pub fn add(&mut self, fragment: Rc<Fragment>) {
-        assert_eq!(self.check(&fragment), (false, false), "can't re-add {:?}", fragment);
-
-        self.fragments.entry(fragment.a.clone())
-            .or_default()
-            .entry(fragment.shard_name)
-            .or_default()
-            .insert(fragment.b.clone(), Rc::clone(&fragment));
-        self.fragments.entry(fragment.b.clone())
-            .or_default()
-            .entry(fragment.shard_name)
-            .or_default()
-            .insert(fragment.a.clone(), fragment);
+        self.paired.insert((fragment.shard_name, fragment.a.clone(), fragment.b.clone()), fragment.clone());
+        self.a_to_b.entry((fragment.shard_name, fragment.a.clone()))
+            .or_insert(Vec::new())
+            .push(fragment.clone());
+        self.a_to_b.entry((fragment.shard_name, fragment.b.clone()))
+            .or_insert(Vec::new())
+            .push(fragment.clone());
+        self.a_to_all.entry(fragment.a.clone())
+            .or_insert(Vec::new())
+            .push(fragment.clone());
+        self.a_to_all.entry(fragment.b.clone())
+            .or_insert(Vec::new())
+            .push(fragment.clone());
     }
 
-    pub fn remove(&mut self, fragment: &Fragment) {
-        assert_eq!(self.check(&fragment), (true, true), "can't re-remove {:?}", fragment);
-        self.fragments.get_mut(&fragment.a).unwrap().get_mut(fragment.shard_name).unwrap().remove(&fragment.b);
-        self.fragments.get_mut(&fragment.b).unwrap().get_mut(fragment.shard_name).unwrap().remove(&fragment.a);
+    pub fn remove(&mut self, fragment: &Rc<Fragment>) {
+        self.paired.remove(&(fragment.shard_name, fragment.a.clone(), fragment.b.clone()));
+
+        if let Some(v) = self.a_to_b.get_mut(&(fragment.shard_name, fragment.a.clone())) {
+            v.retain(|f| f != fragment);
+        }
+
+        if let Some(v) = self.a_to_b.get_mut(&(fragment.shard_name, fragment.a.clone())) {
+            v.retain(|f| f != fragment);
+        }
+
+        if let Some(v) = self.a_to_b.get_mut(&(fragment.shard_name, fragment.b.clone())) {
+            v.retain(|f| f != fragment);
+        }
+
+        if let Some(v) = self.a_to_all.get_mut(&fragment.a) {
+            v.retain(|f| f != fragment);
+        }
+
+        if let Some(v) = self.a_to_all.get_mut(&fragment.b) {
+            v.retain(|f| f != fragment);
+        }
     }
 
     pub fn new() -> Self {
         Fragments {
-            fragments: HashMap::new(),
-            empty_subfragment: HashMap::new(),
+            a_to_b: HashMap::new(),
+            paired: HashMap::new(),
+            a_to_all: HashMap::new(),
+            empty_vec: Vec::new(),
         }
-    }
-
-    pub fn get_precise<'a>(&'a self, a: &IdType, shard_name: &str, b: &IdType) -> Option<Rc<Fragment>> {
-        self.fragments.get(a)
-            .and_then(|p| p.get(shard_name))
-            .and_then(|p| p.get(b).cloned())
-    }
-
-    pub fn get<'a>(&'a self, id: &IdType, shard_name: &str) -> Values<'a, IdType, Rc<Fragment>> {
-        self.fragments.get(id)
-            .and_then(|p| p.get(shard_name))
-            .map(|q| q.values())
-            .unwrap_or(self.empty_subfragment.values())
-    }
-
-    pub fn get_all<'a>(&'a self, id: &IdType) -> Vec<&Rc<Fragment>> {
-        self.fragments.get(id)
-            .map(|p| {
-                p.values()
-                .map(|q| q.values())
-                .flatten()
-                .collect::<Vec<_>>()
-            })
-            .unwrap_or(vec![])
     }
 }
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct Fragment {
+    pub shard_name: &'static str,
     pub a: IdType,
     pub b: IdType,
-    pub shard_name: &'static str,
     pub shard: Shard,
 }
 
 impl Fragment {
-    pub fn new_str(a: &str, b: &str, shard_name: &'static str, shard: Shard) -> Self {
-        Self::new(IdType::from(a), IdType::from(b), shard_name, shard)
-    }
-
     pub fn new(a: IdType, b: IdType, shard_name: &'static str, shard: Shard) -> Self {
         Fragment {
             a,

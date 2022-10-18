@@ -3,6 +3,7 @@ use std::cmp::Reverse;
 use std::collections::hash_map::Values;
 use std::collections::{BinaryHeap, HashMap};
 use std::rc::Rc;
+use std::slice::Iter;
 
 use rand::Rng;
 
@@ -71,13 +72,13 @@ impl World {
         self.next_moves.push((Reverse(self.next_tick()), String::from(id)));
     }
 
-    pub fn get_fragments<'a>(&'a self, first_id: &IdType, shard_name: &str) -> Values<'a, IdType, Rc<Fragment>> {
-        self.fragments.get(first_id, shard_name)
+    pub fn get_fragments<'a>(&'a self, shard_name: &'static str, first_id: &IdType) -> Iter<'a, Rc<Fragment>> {
+        self.fragments.get(shard_name, first_id)
     }
 
     pub fn move_unit(&mut self, unit_id: &UnitId, x: i64, y: i64) -> TimeDiff {
         let fragment = self.fragments
-            .get(&IdType::from(unit_id), "UnitIsInZone")
+            .get("UnitIsInZone", &IdType::from(unit_id))
             .find(|f| matches!(f.shard, UnitIsInZone(_)))
             .expect("avatar should exist")
             .clone();

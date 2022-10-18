@@ -34,7 +34,7 @@ impl <'a> BeAt {
 
 impl Task for BeAt {
     fn is_done(&self, world: &World, unit_id: &UnitId) -> bool {
-        for fragment in world.fragments.get(&IdType::from(unit_id), "UnitIsInZone") {
+        for fragment in world.fragments.get("UnitIsInZone", &IdType::from(unit_id)) {
             if let IdType::Zone(zone) = fragment.b {
                 if self.target().contains(&zone) {
                     return true;
@@ -45,7 +45,7 @@ impl Task for BeAt {
     }
 
     fn advance(&self, world: &mut World, unit_id: &UnitId) -> TimeDiff {
-        let zone = world.get_fragments(&IdType::from(unit_id), "UnitIsInZone")
+        let zone = world.get_fragments("UnitIsInZone", &IdType::from(unit_id))
             .map(|fragment| if let IdType::Zone(zone) = &fragment.b { zone } else { panic!("bogus zone")})
             .next()
             .unwrap();

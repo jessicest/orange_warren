@@ -56,7 +56,7 @@ impl WorldView where {
 
     fn player_zone(&self) -> Zone {
         let world = self.world.borrow();
-        for player_fragment in world.fragments.get(&IdType::from("player"), "UnitIsInZone") {
+        for player_fragment in world.fragments.get("UnitIsInZone", &IdType::from("player")) {
             if let &UnitIsInZone(player_zone) = &player_fragment.shard {
                 return player_zone;
             }
@@ -140,19 +140,12 @@ impl <Child: Widget<WorldView>> Controller<WorldView, Child> for ClickSelector {
         match &event {
             Event::MouseUp(mouse_event) => {
                 if mouse_event.button == MouseButton::Left {
-                    let mut new_unit_id = None;
+                    let zone = world_view.player_zone().adjust(self.offset.0, self.offset.1);
                     let world = world_view.world.borrow();
 
-                    for player_fragment in world.fragments.get(&IdType::from("player"), "UnitIsInZone") {
-                        if let &UnitIsInZone(player_zone) = &player_fragment.shard {
-                            let zid = player_zone.adjust(self.offset.0, self.offset.1);
-                            for fragment in world.fragments.get(&IdType::from(zid), "UnitIsInZone") {
-                                if let UnitIsInZone(_) = fragment.shard {
-                                    new_unit_id = Some(fragment.a.to_string());
-                                }
-                            }
-                        }
-                    }
+                    let new_unit_id = world.fragments.get("UnitIsInZone", &IdType::from(zone))
+                        .next()
+                        .map(|f| f.a.to_string());
 
                     world_view.selected_unit_id = new_unit_id;
                     ctx.request_paint();
@@ -240,11 +233,11 @@ fn make_cell_widget(offset: (i64, i64)) -> impl Widget<WorldView> {
         let zone = world_view.player_zone().adjust(offset.0, offset.1);
         let world = world_view.world.borrow();
 
-        if let Some(_) = world.fragments.get_precise(&IdType::from("tree"), "ObjectTypeOccupiesZone", &IdType::from(zone)) {
+        if let Some(_) = world.fragments.get_one("ObjectTypeOccupiesZone", &IdType::from("tree"), &IdType::from(zone)) {
             paint_rect(ctx, &Color::LIME);
         }
 
-        for fragment in world.fragments.get(&IdType::from(zone), "UnitIsInZone") {
+        for fragment in world.fragments.get("UnitIsInZone", &IdType::from(zone)) {
             paint_rect(ctx, &Color::BLUE);
             if world_view.unit_is_selected(&fragment.a) {
                 paint_border(ctx, &Color::PURPLE);
