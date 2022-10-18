@@ -1,11 +1,11 @@
-use crate::{fragment::{Zone, IdType}, world::{World, TimeDiff}, world_actions};
+use crate::{fragment::{Zone, IdType, UnitId}, world::{World, TimeDiff}, world_actions};
 
 use std::fmt::Debug;
 
 
 pub trait Task: Debug {
-    fn is_done(&self, world: &World, unit_id: &IdType) -> bool;
-    fn advance(&self, world: &mut World, unit_id: &IdType) -> TimeDiff;
+    fn is_done(&self, world: &World, unit_id: &UnitId) -> bool;
+    fn advance(&self, world: &mut World, unit_id: &UnitId) -> TimeDiff;
 }
 
 #[derive(Debug)]
@@ -13,11 +13,11 @@ pub struct BeAvatar {
 }
 
 impl Task for BeAvatar {
-    fn is_done(&self, _: &World, _: &IdType) -> bool {
+    fn is_done(&self, _: &World, _: &UnitId) -> bool {
         false
     }
 
-    fn advance(&self, world: &mut World, unit_id: &IdType) -> TimeDiff {
+    fn advance(&self, world: &mut World, unit_id: &UnitId) -> TimeDiff {
         let (x, y) = world.queued_move;
         world.move_unit(unit_id, x, y)
     }
@@ -33,8 +33,8 @@ impl <'a> BeAt {
 }
 
 impl Task for BeAt {
-    fn is_done(&self, world: &World, unit_id: &IdType) -> bool {
-        for fragment in world.fragments.get(unit_id, "UnitIsInZone") {
+    fn is_done(&self, world: &World, unit_id: &UnitId) -> bool {
+        for fragment in world.fragments.get(&IdType::from(unit_id), "UnitIsInZone") {
             if let IdType::Zone(zone) = fragment.b {
                 if self.target().contains(&zone) {
                     return true;
@@ -44,8 +44,8 @@ impl Task for BeAt {
         false
     }
 
-    fn advance(&self, world: &mut World, unit_id: &IdType) -> TimeDiff {
-        let zone = world.get_fragments(unit_id, "UnitIsInZone")
+    fn advance(&self, world: &mut World, unit_id: &UnitId) -> TimeDiff {
+        let zone = world.get_fragments(&IdType::from(unit_id), "UnitIsInZone")
             .map(|fragment| if let IdType::Zone(zone) = &fragment.b { zone } else { panic!("bogus zone")})
             .next()
             .unwrap();

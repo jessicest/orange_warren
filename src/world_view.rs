@@ -2,9 +2,8 @@
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
 
-use crate::fragment::{UnitId, Shard::*, Zone, Fragment, IdType};
+use crate::fragment::{Shard::*, Zone, Fragment, IdType, UnitId};
 use crate::world::World;
-use crate::world_actions;
 use druid::widget::{Flex, Label, Padding, Painter, Controller, Scroll};
 use druid::{AppLauncher, Color, RenderContext, PlatformError, Widget, WindowDesc, PaintCtx, WidgetExt, Env, EventCtx, Event, MouseButton, Data, lens};
 
@@ -16,10 +15,18 @@ impl Data for IdType {
     }
 }
 
-#[derive(Clone, Data)]
+#[derive(Clone)]
 struct WorldView {
     world: TheWorld,
-    selected_unit_id: Option<IdType>,
+    selected_unit_id: Option<UnitId>,
+}
+
+impl Data for WorldView {
+    fn same(&self, other: &Self) -> bool {
+        self.selected_unit_id == other.selected_unit_id
+            && self.world.borrow().next_tick() == other.world.borrow().next_tick()
+            && self.world.borrow().next_unit() == other.world.borrow().next_unit()
+    }
 }
 
 impl WorldView where {
@@ -34,7 +41,7 @@ impl WorldView where {
         let mut world = self.world.borrow_mut();
         world.queued_move = (x, y);
         world.advance();
-        while world.next_unit() != &IdType::from("player") {
+        while world.next_unit() != "player" {
             world.advance();
         }
     }
@@ -68,7 +75,8 @@ impl <Child: Widget<WorldView>> Controller<WorldView, Child> for KeyController {
                     Numpad8 => world_view.move_avatar(0, -1),
                     Numpad9 => world_view.move_avatar(1, -1),
                     _ => {},
-                }
+                };
+                ctx.request_update();
                 ctx.request_paint();
             },
             _ => child.event(ctx, event, world_view, env),
@@ -114,14 +122,14 @@ impl <Child: Widget<WorldView>> Controller<WorldView, Child> for ClickSelector {
             Event::MouseUp(mouse_event) => {
                 if mouse_event.button == MouseButton::Left {
                     let mut new_unit_id = None;
-                    let world = world_view.world.borrow_mut();
+                    let world = world_view.world.borrow();
 
                     for player_fragment in world.fragments.get(&IdType::from("player"), "UnitIsInZone") {
                         if let &UnitIsInZone(player_zone) = &player_fragment.shard {
                             let zid = player_zone.adjust(self.offset.0, self.offset.1);
                             for fragment in world.fragments.get(&IdType::from(zid), "UnitIsInZone") {
                                 if let UnitIsInZone(_) = fragment.shard {
-                                    new_unit_id = Some(fragment.a.clone());
+                                    new_unit_id = Some(fragment.a.to_string());
                                 }
                             }
                         }
@@ -141,18 +149,46 @@ fn build_ui() -> impl Widget<WorldView> {
         10.0,
         Flex::row()
             .with_flex_child(make_viewport_widget(), 1.0)
-            .with_flex_child(Scroll::new(make_info_panel()).vertical(), 1.0)
+            .with_flex_child(Flex::column()
+                .with_flex_child(Scroll::new(make_fragments_panel()).vertical(), 1.0)
+                .with_flex_child(Scroll::new(make_tasks_panel()).vertical(), 1.0)
+            , 1.0)
             .controller(RepaintOnClick::new())
+            .controller(KeyController::new())
     )
 }
 
-fn make_info_panel() -> impl Widget<WorldView> {
+fn make_fragments_panel() -> impl Widget<WorldView> {
     Label::new(|world_view: &WorldView, _env: &_| {
         if let Some(uid) = &world_view.selected_unit_id {
             let mut result = String::new();
 
-            for fragment in world_view.world.borrow_mut().fragments.get_all(uid) {
+            for fragment in world_view.world.borrow_mut().fragments.get_all(&IdType::from(uid)) {
                 result.push_str(&format!("{:#?}", fragment));
+            }
+
+            result
+        } else {
+            String::from("no unit selected")
+        }
+    })
+}
+
+fn make_tasks_panel() -> impl Widget<WorldView> {
+    Label::new(|world_view: &WorldView, _env: &_| {
+        if let Some(uid) = &world_view.selected_unit_id {
+            let mut result = String::new();
+            let world = world_view.world.borrow();
+
+            for entry in &world.next_moves {
+                if &entry.1 == uid {
+                    result.push_str(&format!("{}\n", entry.0.0));
+                    break;
+                }
+            }
+
+            if let Some(task) = world.tasks.get(uid) {
+                result.push_str(&format!("{:?}\n", task));
             }
 
             result
@@ -177,9 +213,7 @@ fn make_viewport_widget() -> impl Widget<WorldView> {
         }
         grid.add_flex_child(row, 1.0);
     }
-    grid
-        .border(Color::PURPLE, 2.0)
-        .controller(KeyController::new())
+    grid.border(Color::PURPLE, 2.0)
 }
 
 fn make_cell_widget(offset: (i64, i64)) -> impl Widget<WorldView> {
@@ -200,12 +234,12 @@ fn make_cell_widget(offset: (i64, i64)) -> impl Widget<WorldView> {
     }).controller(ClickSelector::new(offset))
 }
 
-fn paint_unit<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, world: &World, uid: &IdType, selected_unit_id: &Option<IdType>) {
+fn paint_unit<'a, 'b, 'c>(ctx: &mut PaintCtx<'a, 'b, 'c>, world: &World, uid: &IdType, selected_unit_id: &Option<UnitId>) {
     let bounds = ctx.size().to_rect().inset(-4.0);
     let rounded = bounds.to_rounded_rect(3.0);
     ctx.fill(rounded, &Color::LIME);
     if let Some(selected_unit_id) = selected_unit_id {
-        if selected_unit_id == uid {
+        if &IdType::from(selected_unit_id) == uid {
             ctx.stroke(rounded, &Color::BLUE, 2.0);
         }
     }

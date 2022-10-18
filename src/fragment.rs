@@ -23,10 +23,24 @@ pub enum IdType {
     String(String),
     Zone(Zone),
 }
+impl IdType {
+    pub fn to_string(&self) -> String {
+        match self {
+            IdType::String(s) => s.clone(),
+            IdType::Zone(zone) => format!("{:?}", zone),
+        }
+    }
+}
 
 impl From<&str> for IdType {
     fn from(s: &str) -> Self {
         Self::from(String::from(s))
+    }
+}
+
+impl From<&String> for IdType {
+    fn from(s: &String) -> Self {
+        Self::from(s.clone())
     }
 }
 
